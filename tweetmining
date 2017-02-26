@@ -1,0 +1,62 @@
+# install required packages on the R Studio instance
+install.packages("ggplot2", repos="http://cran.rstudio.com/", dependencies=TRUE)
+install.packages("ggmap", repos="http://cran.rstudio.com/", dependencies=TRUE)
+install.packages("syuzhet", repos="http://cran.rstudio.com/", dependencies=TRUE)
+install.packages("tm", repos="http://cran.rstudio.com/", dependencies=TRUE)
+install.packages("xlsx", repos="http://cran.rstudio.com/", dependencies=TRUE)
+
+# load required libraries 
+require(ggplot2)
+require(ggmap)
+require(syuzhet)
+require(tm)
+require(xlsx)
+
+rm(list = ls())
+
+
+# read excel file located in your default system location and store the data in the R data frame
+tweetscsv <- read.xlsx2("SAMSUNG.XLSX", sheetIndex = 1, colIndex = 11, header = TRUE) 
+
+# convert the data frame into String formate, as is required by the sentimental analysis related functions
+str(tweetscsv)
+transformed_frame <- transform(tweetscsv, text = as.character(text))
+
+
+
+# initiate required objects in R to be refered for later
+result <- transformed_frame
+result <- data.frame()
+j <- data.frame()
+resultplot <- data.frame()
+k <- data.frame()
+
+
+# for-loop that reads through each tweet (row) one by one
+
+for (i in 1:nrow(transformed_frame)) {
+  
+  tweets_sentences <- get_sentences(transformed_frame[i,], strip_quotes = TRUE)
+  nrc_data <- get_nrc_sentiment(tweets_sentences)
+  nrc_data <- cbind(nrc_data, rowSums(nrc_data[,c(1:10)]))
+  j <- cbind(transformed_frame[i,],nrc_data[1,]) 
+  result <- rbind(result,j)
+  resultplot <- rbind(resultplot, nrc_data[1,])
+  
+}
+View(result)
+
+angry_items <- subset(result, angry > 0)
+
+write.xlsx2(result, file="tweets_output.xlsx" , sheetName="Result",
+            col.names=TRUE, row.names=TRUE, append=FALSE)
+
+# display the result in bar plot
+barplot(
+  sort(colSums(prop.table(resultplot[,c(1:8)]))), 
+  horiz = TRUE, 
+  cex.names = 0.7, 
+  las = 1, 
+  main = "Emotions in tweets from your timeline", xlab="Percentage"
+)
+
